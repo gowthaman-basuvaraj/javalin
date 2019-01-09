@@ -19,7 +19,7 @@ class CachedRequestWrapper(request: HttpServletRequest, private val bodyCacheSiz
         val log = LoggerFactory.getLogger(CachedRequestWrapper::class.java)
     }
 
-    private val bodySize = this.contentLengthLong
+    private val bodySize = this.contentLength.toLong()
     private var bodyConsumed = false
 
     private val cachedBytes: ByteArray by lazy { super.getInputStream().readBytes() } // don't read unless we have to
