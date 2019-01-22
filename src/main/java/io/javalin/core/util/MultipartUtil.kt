@@ -21,8 +21,8 @@ object MultipartUtil {
             UploadedFile(
                     contentType = filePart.contentType,
                     content = ByteArrayInputStream(filePart.inputStream.readBytes()),
-                    name = filePart.submittedFileName,
-                    extension = filePart.submittedFileName.replaceBeforeLast(".", "")
+                    name = filePart.name,
+                    extension = filePart.name.replaceBeforeLast(".", "")
             )
         }
     }
@@ -38,6 +38,6 @@ object MultipartUtil {
         }.toList()
     }
 
-    private fun isField(filePart: Part) = filePart.submittedFileName == null // this is what Apache FileUpload does ...
+    private fun isField(filePart: Part) = filePart.name == null // this is what Apache FileUpload does ...
     private fun isFile(filePart: Part) = !isField(filePart)
 }
