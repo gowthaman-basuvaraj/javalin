@@ -9,14 +9,13 @@ package io.javalin
 
 import com.mashape.unirest.http.HttpMethod
 import com.mashape.unirest.http.Unirest
+import io.javalin.TestUtil.okHandler
 import io.javalin.apibuilder.ApiBuilder
 import io.javalin.apibuilder.ApiBuilder.*
 import io.javalin.apibuilder.CrudHandler
-import io.javalin.util.TestUtil
-import io.javalin.util.TestUtil.okHandler
-import org.hamcrest.CoreMatchers
-import org.hamcrest.MatcherAssert.assertThat
-import org.hamcrest.Matchers.`is`
+import io.javalin.http.Context
+import io.javalin.http.Handler
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
 
 class TestApiBuilder {
@@ -28,7 +27,7 @@ class TestApiBuilder {
                 get("hello", simpleAnswer("Hello from level 1"))
             }
         }
-        assertThat(http.getBody("/level-1/hello"), `is`("Hello from level 1"))
+        assertThat(http.getBody("/level-1/hello")).isEqualTo("Hello from level 1")
     }
 
     @Test
@@ -51,8 +50,8 @@ class TestApiBuilder {
         }
         val httpMethods = arrayOf(HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT, HttpMethod.DELETE, HttpMethod.PATCH)
         for (httpMethod in httpMethods) {
-            assertThat(http.call(httpMethod, "/api").status, `is`(200))
-            assertThat(http.call(httpMethod, "/api/user").status, `is`(200))
+            assertThat(http.call(httpMethod, "/api").status).isEqualTo(200)
+            assertThat(http.call(httpMethod, "/api/user").status).isEqualTo(200)
         }
     }
 
@@ -70,10 +69,10 @@ class TestApiBuilder {
                 }
             }
         }
-        assertThat(http.getBody("/hello"), `is`("Hello from level 0"))
-        assertThat(http.getBody("/level-1/hello"), `is`("Hello from level 1"))
-        assertThat(http.getBody("/level-1/level-2/hello"), `is`("Hello from level 2"))
-        assertThat(http.getBody("/level-1/level-2/level-3/hello"), `is`("Hello from level 3"))
+        assertThat(http.getBody("/hello")).isEqualTo("Hello from level 0")
+        assertThat(http.getBody("/level-1/hello")).isEqualTo("Hello from level 1")
+        assertThat(http.getBody("/level-1/level-2/hello")).isEqualTo("Hello from level 2")
+        assertThat(http.getBody("/level-1/level-2/level-3/hello")).isEqualTo("Hello from level 3")
     }
 
     @Test
@@ -87,7 +86,7 @@ class TestApiBuilder {
                 }
             }
         }
-        assertThat(http.getBody("/level-1/level-2/level-3/hello"), `is`("1Hello2"))
+        assertThat(http.getBody("/level-1/level-2/level-3/hello")).isEqualTo("1Hello2")
     }
 
     @Test
@@ -98,8 +97,8 @@ class TestApiBuilder {
                 get("hello") { ctx -> ctx.result("Hello") }
             }
         }
-        assertThat(http.getBody("/level-1"), `is`("level-1"))
-        assertThat(http.getBody("/level-1/hello"), `is`("Hello"))
+        assertThat(http.getBody("/level-1")).isEqualTo("level-1")
+        assertThat(http.getBody("/level-1/hello")).isEqualTo("Hello")
     }
 
     private fun simpleAnswer(body: String) = Handler { ctx -> ctx.result(body) }
@@ -112,16 +111,16 @@ class TestApiBuilder {
 
     @Test
     fun `ApiBuilder works with two services at once`() {
-        val app1 = Javalin.create().port(0).start()
-        val app2 = Javalin.create().port(0).start()
+        val app1 = Javalin.create().start(0)
+        val app2 = Javalin.create().start(0)
         app1.routes { get("/hello-1") { ctx -> ctx.result("Hello-1") } }
         app1.routes { get("/hello-2") { ctx -> ctx.result("Hello-2") } }
         app2.routes { get("/hello-1") { ctx -> ctx.result("Hello-1") } }
         app2.routes { get("/hello-2") { ctx -> ctx.result("Hello-2") } }
-        assertThat(Unirest.get("http://localhost:" + app1.port() + "/hello-1").asString().body, CoreMatchers.`is`("Hello-1"))
-        assertThat(Unirest.get("http://localhost:" + app1.port() + "/hello-2").asString().body, CoreMatchers.`is`("Hello-2"))
-        assertThat(Unirest.get("http://localhost:" + app2.port() + "/hello-1").asString().body, CoreMatchers.`is`("Hello-1"))
-        assertThat(Unirest.get("http://localhost:" + app2.port() + "/hello-2").asString().body, CoreMatchers.`is`("Hello-2"))
+        assertThat(Unirest.get("http://localhost:" + app1.port() + "/hello-1").asString().body).isEqualTo("Hello-1")
+        assertThat(Unirest.get("http://localhost:" + app1.port() + "/hello-2").asString().body).isEqualTo("Hello-2")
+        assertThat(Unirest.get("http://localhost:" + app2.port() + "/hello-1").asString().body).isEqualTo("Hello-1")
+        assertThat(Unirest.get("http://localhost:" + app2.port() + "/hello-2").asString().body).isEqualTo("Hello-2")
         app1.stop()
         app2.stop()
     }
@@ -134,17 +133,59 @@ class TestApiBuilder {
                 crud("/users/:user-id", UserController())
             }
         }
-        assertThat(Unirest.get(http.origin + "/users").asString().body, `is`("All my users"))
-        assertThat(Unirest.post(http.origin + "/users").asString().status, `is`(201))
-        assertThat(Unirest.get(http.origin + "/users/myUser").asString().body, `is`("My single user: myUser"))
-        assertThat(Unirest.patch(http.origin + "/users/myUser").asString().status, `is`(204))
-        assertThat(Unirest.delete(http.origin + "/users/myUser").asString().status, `is`(204))
+        assertThat(Unirest.get(http.origin + "/users").asString().body).isEqualTo("All my users")
+        assertThat(Unirest.post(http.origin + "/users").asString().status).isEqualTo(201)
+        assertThat(Unirest.get(http.origin + "/users/myUser").asString().body).isEqualTo("My single user: myUser")
+        assertThat(Unirest.patch(http.origin + "/users/myUser").asString().status).isEqualTo(204)
+        assertThat(Unirest.delete(http.origin + "/users/myUser").asString().status).isEqualTo(204)
 
-        assertThat(Unirest.get(http.origin + "/s/users").asString().body, `is`("All my users"))
-        assertThat(Unirest.post(http.origin + "/s/users").asString().status, `is`(201))
-        assertThat(Unirest.get(http.origin + "/s/users/myUser").asString().body, `is`("My single user: myUser"))
-        assertThat(Unirest.patch(http.origin + "/s/users/myUser").asString().status, `is`(204))
-        assertThat(Unirest.delete(http.origin + "/s/users/myUser").asString().status, `is`(204))
+        assertThat(Unirest.get(http.origin + "/s/users").asString().body).isEqualTo("All my users")
+        assertThat(Unirest.post(http.origin + "/s/users").asString().status).isEqualTo(201)
+        assertThat(Unirest.get(http.origin + "/s/users/myUser").asString().body).isEqualTo("My single user: myUser")
+        assertThat(Unirest.patch(http.origin + "/s/users/myUser").asString().status).isEqualTo(204)
+        assertThat(Unirest.delete(http.origin + "/s/users/myUser").asString().status).isEqualTo(204)
+    }
+
+    @Test
+    fun `CrudHandler works with long nested resources`() = TestUtil.test { app, http ->
+        app.routes {
+            crud("/foo/bar/users/:user-id", UserController())
+            path("/foo/baz") {
+                crud("/users/:user-id", UserController())
+            }
+        }
+        assertThat(Unirest.get(http.origin + "/foo/bar/users").asString().body).isEqualTo("All my users")
+        assertThat(Unirest.post(http.origin + "/foo/bar/users").asString().status).isEqualTo(201)
+        assertThat(Unirest.get(http.origin + "/foo/bar/users/myUser").asString().body).isEqualTo("My single user: myUser")
+        assertThat(Unirest.patch(http.origin + "/foo/bar/users/myUser").asString().status).isEqualTo(204)
+        assertThat(Unirest.delete(http.origin + "/foo/bar/users/myUser").asString().status).isEqualTo(204)
+
+        assertThat(Unirest.get(http.origin + "/foo/baz/users").asString().body).isEqualTo("All my users")
+        assertThat(Unirest.post(http.origin + "/foo/baz/users").asString().status).isEqualTo(201)
+        assertThat(Unirest.get(http.origin + "/foo/baz/users/myUser").asString().body).isEqualTo("My single user: myUser")
+        assertThat(Unirest.patch(http.origin + "/foo/baz/users/myUser").asString().status).isEqualTo(204)
+        assertThat(Unirest.delete(http.origin + "/foo/baz/users/myUser").asString().status).isEqualTo(204)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `CrudHandler rejects resource in the middle`() = TestUtil.test { app, http ->
+        app.routes {
+            crud("/foo/bar/:user-id/users", UserController())
+        }
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `CrudHandler rejects missing resource`() = TestUtil.test { app, http ->
+        app.routes {
+            crud("/foo/bar/users", UserController())
+        }
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `CrudHandler rejects missing resource base`() = TestUtil.test { app, http ->
+        app.routes {
+            crud("/:user-id", UserController())
+        }
     }
 
     @Test
@@ -155,17 +196,17 @@ class TestApiBuilder {
             }
             crud("*/:user-id", UserController())
         }
-        assertThat(Unirest.get(http.origin + "/users").asString().body, `is`("All my users"))
-        assertThat(Unirest.post(http.origin + "/users").asString().status, `is`(201))
-        assertThat(Unirest.get(http.origin + "/users/myUser").asString().body, `is`("My single user: myUser"))
-        assertThat(Unirest.patch(http.origin + "/users/myUser").asString().status, `is`(204))
-        assertThat(Unirest.delete(http.origin + "/users/myUser").asString().status, `is`(204))
+        assertThat(Unirest.get(http.origin + "/users").asString().body).isEqualTo("All my users")
+        assertThat(Unirest.post(http.origin + "/users").asString().status).isEqualTo(201)
+        assertThat(Unirest.get(http.origin + "/users/myUser").asString().body).isEqualTo("My single user: myUser")
+        assertThat(Unirest.patch(http.origin + "/users/myUser").asString().status).isEqualTo(204)
+        assertThat(Unirest.delete(http.origin + "/users/myUser").asString().status).isEqualTo(204)
 
-        assertThat(Unirest.get(http.origin + "/s/users").asString().body, `is`("All my users"))
-        assertThat(Unirest.post(http.origin + "/s/users").asString().status, `is`(201))
-        assertThat(Unirest.get(http.origin + "/s/users/myUser").asString().body, `is`("My single user: myUser"))
-        assertThat(Unirest.patch(http.origin + "/s/users/myUser").asString().status, `is`(204))
-        assertThat(Unirest.delete(http.origin + "/s/users/myUser").asString().status, `is`(204))
+        assertThat(Unirest.get(http.origin + "/s/users").asString().body).isEqualTo("All my users")
+        assertThat(Unirest.post(http.origin + "/s/users").asString().status).isEqualTo(201)
+        assertThat(Unirest.get(http.origin + "/s/users/myUser").asString().body).isEqualTo("My single user: myUser")
+        assertThat(Unirest.patch(http.origin + "/s/users/myUser").asString().status).isEqualTo(204)
+        assertThat(Unirest.delete(http.origin + "/s/users/myUser").asString().status).isEqualTo(204)
     }
 
     class UserController : CrudHandler {

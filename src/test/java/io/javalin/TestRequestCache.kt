@@ -1,13 +1,11 @@
 package io.javalin
 
-import io.javalin.util.TestUtil
 import org.apache.http.client.methods.HttpPost
 import org.apache.http.entity.ByteArrayEntity
 import org.apache.http.impl.client.HttpClients
 import org.apache.http.util.EntityUtils
-import org.hamcrest.MatcherAssert.assertThat
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
-import java.util.*
 
 class TestRequestCache {
 
@@ -20,18 +18,18 @@ class TestRequestCache {
         }
         val response = HttpClients.createDefault().execute(post)
         val result = EntityUtils.toByteArray(response.entity)
-        assertThat("Body should match", Arrays.equals(result, body))
+        assertThat(body).isEqualTo(result)
         response.close()
     }
 
     @Test
-    fun `disabling request-caching works`() = TestUtil.test(Javalin.create().disableRequestCache()) { app, http ->
+    fun `disabling request-caching works`() = TestUtil.test(Javalin.create { it.requestCacheSize = 0 }) { app, http ->
         app.post("/disabled-cache") { ctx ->
             if (ctx.req.inputStream.javaClass.simpleName == "CachedServletInputStream") {
                 throw IllegalStateException("Cache should be disabled.")
             }
         }
         val response = http.post("/disabled-cache").body("test").asBinary()
-        assertThat("Request cache should be disabled", response.status == 200)
+        assertThat(response.status).isEqualTo(200)
     }
 }

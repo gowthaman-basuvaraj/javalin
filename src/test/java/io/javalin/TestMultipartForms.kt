@@ -6,13 +6,11 @@
 
 package io.javalin
 
-import io.javalin.json.JavalinJackson
 import io.javalin.misc.UploadInfo
-import io.javalin.util.TestUtil
+import io.javalin.plugin.json.JavalinJackson
 import okhttp3.*
 import org.apache.commons.io.IOUtils
-import org.hamcrest.MatcherAssert.assertThat
-import org.hamcrest.Matchers.`is`
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
 import java.io.File
 import java.nio.charset.StandardCharsets
@@ -31,41 +29,42 @@ class TestMultipartForms {
         val response = http.post("/test-upload")
                 .field("upload", File("src/test/resources/upload-test/text.txt"))
                 .asString()
-        assertThat(response.body, `is`(TEXT_FILE_CONTENT))
+        assertThat(response.body).isEqualTo(TEXT_FILE_CONTENT)
     }
 
     @Test
     fun `mp3s are uploaded correctly`() = TestUtil.test { app, http ->
         app.post("/test-upload") { ctx ->
             val uf = ctx.uploadedFile("upload")!!
-            ctx.json(UploadInfo(uf.name, uf.content.available().toLong(), uf.contentType, uf.extension))
+            ctx.json(UploadInfo(uf.filename, uf.contentLength, uf.contentType, uf.extension))
         }
         val uploadFile = File("src/test/resources/upload-test/sound.mp3")
         val response = http.post("/test-upload")
                 .field("upload", uploadFile)
                 .asString()
         val uploadInfo = JavalinJackson.fromJson(response.body, UploadInfo::class.java)
-        assertThat(uploadInfo.contentLength, `is`(uploadFile.length()))
-        assertThat(uploadInfo.filename, `is`(uploadFile.name))
-        assertThat(uploadInfo.contentType, `is`("application/octet-stream"))
-        assertThat(uploadInfo.extension, `is`(".mp3"))
+        assertThat(uploadInfo.contentLength).isEqualTo(uploadFile.length())
+        assertThat(uploadInfo.filename).isEqualTo(uploadFile.name)
+        assertThat(uploadInfo.contentType).isEqualTo("application/octet-stream")
+        assertThat(uploadInfo.extension).isEqualTo(".mp3")
     }
 
     @Test
     fun `pngs are uploaded correctly`() = TestUtil.test { app, http ->
         app.post("/test-upload") { ctx ->
             val uf = ctx.uploadedFile("upload")
-            ctx.json(UploadInfo(uf!!.name, uf.content.available().toLong(), uf.contentType, uf.extension))
+            ctx.json(UploadInfo(uf!!.filename, uf.contentLength, uf.contentType, uf.extension))
         }
         val uploadFile = File("src/test/resources/upload-test/image.png")
         val response = http.post("/test-upload")
                 .field("upload", uploadFile, "image/png")
                 .asString()
         val uploadInfo = JavalinJackson.fromJson(response.body, UploadInfo::class.java)
-        assertThat(uploadInfo.contentLength, `is`(uploadFile.length()))
-        assertThat(uploadInfo.filename, `is`(uploadFile.name))
-        assertThat(uploadInfo.contentType, `is`("image/png"))
-        assertThat(uploadInfo.extension, `is`(".png"))
+        assertThat(uploadInfo.contentLength).isEqualTo(uploadFile.length())
+        assertThat(uploadInfo.filename).isEqualTo(uploadFile.name)
+        assertThat(uploadInfo.contentType).isEqualTo("image/png")
+        assertThat(uploadInfo.extension).isEqualTo(".png")
+        assertThat(uploadInfo.contentLength).isEqualTo(6690)
     }
 
     @Test
@@ -76,7 +75,7 @@ class TestMultipartForms {
                 .field("upload", File("src/test/resources/upload-test/sound.mp3"))
                 .field("upload", File("src/test/resources/upload-test/text.txt"))
                 .asString()
-        assertThat(response.body, `is`("3"))
+        assertThat(response.body).isEqualTo("3")
     }
 
     @Test
@@ -85,17 +84,17 @@ class TestMultipartForms {
             ctx.uploadedFile("non-existing-file")
             ctx.result("OK")
         }
-        assertThat(http.post("/test-upload").asString().body, `is`("OK"))
+        assertThat(http.post("/test-upload").asString().body).isEqualTo("OK")
     }
 
     @Test
     fun `mixing files and text fields works`() = TestUtil.test { app, http ->
-        app.post("/test-upload") { ctx -> ctx.result(ctx.formParam("field") + " and " + ctx.uploadedFile("upload")!!.name) }
+        app.post("/test-upload") { ctx -> ctx.result(ctx.formParam("field") + " and " + ctx.uploadedFile("upload")!!.filename) }
         val response = http.post("/test-upload")
                 .field("upload", File("src/test/resources/upload-test/image.png"))
                 .field("field", "text-value")
                 .asString()
-        assertThat(response.body, `is`("text-value and image.png"))
+        assertThat(response.body).isEqualTo("text-value and image.png")
     }
 
     @Test
@@ -106,17 +105,17 @@ class TestMultipartForms {
                 .field("field", "text-value")
                 .field("field2", "text-value-2")
                 .asString()
-        assertThat(response.body, `is`("text-value and text-value-2"))
+        assertThat(response.body).isEqualTo("text-value and text-value-2")
     }
 
     @Test
     fun `unicode text-fields work`() = TestUtil.test { app, http ->
-        app.post("/test-upload") { ctx -> ctx.result(ctx.formParam("field") + " and " + ctx.uploadedFile("upload")!!.name) }
+        app.post("/test-upload") { ctx -> ctx.result(ctx.formParam("field") + " and " + ctx.uploadedFile("upload")!!.filename) }
         val response = http.post("/test-upload")
                 .field("upload", File("src/test/resources/upload-test/text.txt"))
                 .field("field", "♚♛♜♜♝♝♞♞♟♟♟♟♟♟♟♟")
                 .asString()
-        assertThat(response.body, `is`("♚♛♜♜♝♝♞♞♟♟♟♟♟♟♟♟ and text.txt"))
+        assertThat(response.body).isEqualTo("♚♛♜♜♝♝♞♞♟♟♟♟♟♟♟♟ and text.txt")
     }
 
     @Test
@@ -146,7 +145,7 @@ class TestMultipartForms {
                 + "foo: foo-1, foo-2" + "\n"
                 + "bar: bar-1" + "\n"
                 + "baz: default")
-        assertThat(responseAsString, `is`(expectedContent))
+        assertThat(responseAsString).isEqualTo(expectedContent)
     }
 
     @Test
@@ -166,7 +165,7 @@ class TestMultipartForms {
                                 .build()
                 ).build()
         ).execute().body()!!.string()
-        assertThat(responseAsString, `is`(prefix + TEXT_FILE_CONTENT))
+        assertThat(responseAsString).isEqualTo(prefix + TEXT_FILE_CONTENT)
     }
 
 }

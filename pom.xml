@@ -9,7 +9,7 @@
 
     <groupId>io.javalin</groupId>
     <artifactId>javalin</artifactId>
-    <version>2.5.1-FORK</version>
+    <version>3.0.1-FORK</version>
 
     <name>Javalin</name>
     <description>Javalin: Simple REST APIs for Java and Kotlin</description>
@@ -40,11 +40,12 @@
 
     <properties>
         <java.version>1.8</java.version>
-        <jetty.version>9.4.13.v20181111</jetty.version>
-        <slf4j.version>1.7.25</slf4j.version>
+        <jetty.version>9.4.17.v20190418</jetty.version>
+        <slf4j.version>1.7.26</slf4j.version>
+        <jackson.version>2.9.9</jackson.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <kotlin.version>1.2.71</kotlin.version>
-        <kotlin.compiler.jvmTarget>1.6</kotlin.compiler.jvmTarget>
+        <kotlin.version>1.3.31</kotlin.version>
+        <kotlin.compiler.jvmTarget>1.6</kotlin.compiler.jvmTarget> <!-- This is 1.6 on purpose, don't bump -->
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
     </properties>
 
@@ -90,14 +91,14 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.9.8</version>
+            <version>${jackson.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
-          <groupId>com.fasterxml.jackson.module</groupId>
-          <artifactId>jackson-module-kotlin</artifactId>
-          <version>2.9.4.1</version>
-          <optional>true</optional>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-kotlin</artifactId>
+            <version>${jackson.version}</version>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.apache.velocity</groupId>
@@ -142,14 +143,45 @@
             <optional>true</optional>
         </dependency>
         <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+            <version>1.1.3</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-models</artifactId>
+            <version>2.0.8</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>cc.vileda</groupId>
+            <artifactId>kotlin-openapi3-dsl</artifactId>
+            <version>0.20.1</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>redoc</artifactId>
+            <version>2.0.0-rc.2</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
             <groupId>org.webjars</groupId>
             <artifactId>swagger-ui</artifactId>
-            <version>3.17.6</version>
+            <version>3.22.2</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.github.classgraph</groupId>
+            <artifactId>classgraph</artifactId>
+            <version>4.8.34</version>
             <optional>true</optional>
         </dependency>
         <!-- END Optional dependencies -->
 
         <!-- BEGIN Test dependencies -->
+
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -157,9 +189,9 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.hamcrest</groupId>
-            <artifactId>hamcrest-library</artifactId>
-            <version>1.3</version>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>3.11.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -198,6 +230,18 @@
             <version>2.8.5</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-unixsocket</artifactId>
+            <version>${jetty.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.mockk</groupId>
+            <artifactId>mockk</artifactId>
+            <version>1.9.3.kotlin12</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <pluginRepositories>
@@ -221,6 +265,10 @@
                             <goal>compile</goal>
                         </goals>
                         <configuration>
+                            <args>
+                                <!-- Workaround for bug in Kotlin compiler: https://youtrack.jetbrains.com/issue/KT-29475 -->
+                                <arg>-Xsanitize-parentheses</arg>
+                            </args>
                             <sourceDirs>
                                 <sourceDir>${project.basedir}/src/main/java</sourceDir>
                             </sourceDirs>
@@ -232,6 +280,10 @@
                             <goal>test-compile</goal>
                         </goals>
                         <configuration>
+                            <args>
+                                <!-- Workaround for bug in Kotlin compiler: https://youtrack.jetbrains.com/issue/KT-29475 -->
+                                <arg>-Xsanitize-parentheses</arg>
+                            </args>
                             <sourceDirs>
                                 <sourceDir>${project.basedir}/src/test/kotlin</sourceDir>
                                 <sourceDir>${project.basedir}/src/test/java</sourceDir>

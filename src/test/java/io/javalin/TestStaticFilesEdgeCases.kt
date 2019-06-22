@@ -6,40 +6,40 @@
 
 package io.javalin
 
-import io.javalin.staticfiles.Location
-import org.hamcrest.MatcherAssert.assertThat
-import org.hamcrest.Matchers.`is`
+import io.javalin.core.util.FileUtil
+import io.javalin.http.staticfiles.Location
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
 import java.io.File
 
 class TestStaticFilesEdgeCases {
 
-    @Test
+    @Test(expected = RuntimeException::class)
     fun `server doesn't start for non-existent classpath folder`() {
-        doTest(failureExpected = true, app = Javalin.create().enableStaticFiles("some-fake-folder"))
+        Javalin.create { it.addStaticFiles("some-fake-folder") }.start()
     }
 
-    @Test
+    @Test(expected = RuntimeException::class)
     fun `server doesn't start for non-existent external folder`() {
-        doTest(failureExpected = true, app = Javalin.create().enableStaticFiles("some-fake-folder", Location.EXTERNAL))
+        Javalin.create { it.addStaticFiles("some-fake-folder", Location.EXTERNAL) }.start()
     }
 
-    @Test
+    @Test(expected = RuntimeException::class)
     fun `server doesn't start for empty classpath folder`() {
         File("src/test/external/empty").mkdir()
-        doTest(failureExpected = true, app = Javalin.create().enableStaticFiles("src/test/external/empty", Location.CLASSPATH))
+        Javalin.create { it.addStaticFiles("src/test/external/empty", Location.CLASSPATH) }.start()
     }
 
     @Test
     fun `server starts for empty external folder`() {
         File("src/test/external/empty").mkdir()
-        doTest(failureExpected = false, app = Javalin.create().enableStaticFiles("src/test/external/empty", Location.EXTERNAL))
+        Javalin.create { it.addStaticFiles("src/test/external/empty", Location.EXTERNAL) }.start(0).stop()
     }
 
-    private fun doTest(failureExpected: Boolean, app: Javalin) {
-        var failed = false
-        app.event(JavalinEvent.SERVER_START_FAILED) { failed = true }.start(0).stop()
-        assertThat(failed, `is`(failureExpected))
+    @Test
+    fun `test FileUtil`() {
+        assertThat(FileUtil.readFile("src/test/external/html.html")).contains("<h1>HTML works</h1>")
+        assertThat(FileUtil.readResource("/public/html.html")).contains("<h1>HTML works</h1>")
     }
 
 }

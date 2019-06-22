@@ -7,15 +7,14 @@
 package io.javalin.examples;
 
 import io.javalin.Javalin;
-import io.javalin.staticfiles.Location;
+import io.javalin.http.staticfiles.Location;
 
 public class HelloWorldStaticFiles_external {
 
     public static void main(String[] args) {
-        Javalin.create()
-            .port(7070)
-            .enableStaticFiles("src/test/external/", Location.EXTERNAL)
-            .start();
+        Javalin.create(config -> {
+            config.addStaticFiles("src/test/external/", Location.EXTERNAL);
+        }).start(7070);
     }
 
 }

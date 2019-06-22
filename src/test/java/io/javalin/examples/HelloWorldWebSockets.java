@@ -12,20 +12,20 @@ import io.javalin.Javalin;
 // see HelloWorldSecure for how to set that up
 public class HelloWorldWebSockets {
     public static void main(String[] args) {
-        Javalin app = Javalin.create().enableDebugLogging().port(7070);
+        Javalin app = Javalin.create(config -> config.enableDevLogging());
         app.ws("/websocket", ws -> {
-            ws.onConnect(session -> {
+            ws.onConnect(ctx -> {
                 System.out.println("Connected");
-                session.send("[MESSAGE FROM SERVER] Connection established");
+                ctx.send("[MESSAGE FROM SERVER] Connection established");
             });
-            ws.onMessage((session, message) -> {
-                System.out.println("Received: " + message);
-                session.send("[MESSAGE FROM SERVER] Echo: " + message);
+            ws.onMessage(ctx -> {
+                System.out.println("Received: " + ctx.message());
+                ctx.send("[MESSAGE FROM SERVER] Echo: " + ctx.message());
             });
-            ws.onClose((session, statusCode, reason) -> {
+            ws.onClose(ctx -> {
                 System.out.println("Closed");
             });
-            ws.onError((session, throwable) -> {
+            ws.onError(ctx -> {
                 System.out.println("Errored");
             });
         });
@@ -38,6 +38,6 @@ public class HelloWorldWebSockets {
                 "   setInterval(() => ws.send(\"Repeating request every 2 seconds\"), 2000);\n" +
                 "</script>");
         });
-        app.start();
+        app.start(7070);
     }
 }

@@ -7,8 +7,7 @@
 
 package io.javalin
 
-import org.hamcrest.CoreMatchers.`is`
-import org.hamcrest.MatcherAssert.assertThat
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
 
 class TestLifecycleEvents {
@@ -16,15 +15,33 @@ class TestLifecycleEvents {
     @Test
     fun `life cycle events work`() {
         var log = ""
-        Javalin.create().apply {
-            event(JavalinEvent.SERVER_STARTING) { log += "Starting" }
-            event(JavalinEvent.SERVER_STARTED) { log += "Started" }
-            event(JavalinEvent.SERVER_STOPPING) { log += "Stopping" }
-            event(JavalinEvent.SERVER_STOPPING) { log += "Stopping" }
-            event(JavalinEvent.SERVER_STOPPING) { log += "Stopping" }
-            event(JavalinEvent.SERVER_STOPPED) { log += "Stopped" }
+        Javalin.create().events { event ->
+            event.serverStarting { log += "Starting" }
+            event.serverStarted { log += "Started" }
+            event.serverStopping { log += "Stopping" }
+            event.serverStopping { log += "Stopping" }
+            event.serverStopping { log += "Stopping" }
+            event.serverStopped { log += "Stopped" }
         }.start(0).stop()
-        assertThat(log, `is`("StartingStartedStoppingStoppingStoppingStopped"))
+        assertThat(log).isEqualTo("StartingStartedStoppingStoppingStoppingStopped")
+    }
+
+    @Test
+    fun `handlerAdded event works`() = TestUtil.test { app, http ->
+        var log = ""
+        app.events { it.handlerAdded { handlerMetaInfo -> log += handlerMetaInfo.path } }
+        app.events { it.handlerAdded { handlerMetaInfo -> log += handlerMetaInfo.path } }
+        app.get("/test-path") {}
+        assertThat(log).isEqualTo("/test-path/test-path")
+    }
+
+    @Test
+    fun `wsHandlerAdded event works`() = TestUtil.test { app, http ->
+        var log = ""
+        app.events { it.wsHandlerAdded { handlerMetaInfo -> log += handlerMetaInfo.path } }
+        app.events { it.wsHandlerAdded { handlerMetaInfo -> log += handlerMetaInfo.path } }
+        app.ws("/test-path-ws") {}
+        assertThat(log).isEqualTo("/test-path-ws/test-path-ws")
     }
 
 }

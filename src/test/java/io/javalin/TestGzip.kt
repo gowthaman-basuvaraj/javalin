@@ -8,12 +8,9 @@ package io.javalin
 
 import com.mashape.unirest.http.Unirest
 import io.javalin.core.util.Header
-import io.javalin.util.TestUtil
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.hamcrest.MatcherAssert.assertThat
-import org.hamcrest.Matchers.`is`
-import org.hamcrest.Matchers.nullValue
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.Test
 
 
@@ -27,7 +24,7 @@ class TestGzip {
             .get("/huge") { ctx -> ctx.result(getSomeObjects(1000).toString()) }
             .get("/tiny") { ctx -> ctx.result(getSomeObjects(10).toString()) }
 
-    val gzipDisabledApp = Javalin.create().disableDynamicGzip()
+    val gzipDisabledApp = Javalin.create { it.dynamicGzip = false }
             .get("/huge") { ctx -> ctx.result(getSomeObjects(1000).toString()) }
             .get("/tiny") { ctx -> ctx.result(getSomeObjects(10).toString()) }
 
@@ -36,26 +33,26 @@ class TestGzip {
 
     @Test
     fun `doesn't gzip when Accepts is not set`() = TestUtil.test(app) { _, http ->
-        assertThat(Unirest.get(http.origin + "/huge").header(Header.ACCEPT_ENCODING, "null").asString().body.length, `is`(hugeLength))
-        assertThat(getResponse(http.origin, "/huge", "null").headers().get(Header.CONTENT_ENCODING), `is`(nullValue()))
+        assertThat(Unirest.get(http.origin + "/huge").header(Header.ACCEPT_ENCODING, "null").asString().body.length).isEqualTo(hugeLength)
+        assertThat(getResponse(http.origin, "/huge", "null").headers().get(Header.CONTENT_ENCODING)).isNull()
     }
 
     @Test
     fun `doesn't gzip when response is too small`() = TestUtil.test(app) { _, http ->
-        assertThat(Unirest.get(http.origin + "/tiny").asString().body.length, `is`(tinyLength))
-        assertThat(getResponse(http.origin, "/tiny", "gzip").headers().get(Header.CONTENT_ENCODING), `is`(nullValue()))
+        assertThat(Unirest.get(http.origin + "/tiny").asString().body.length).isEqualTo(tinyLength)
+        assertThat(getResponse(http.origin, "/tiny", "gzip").headers().get(Header.CONTENT_ENCODING)).isNull()
     }
 
     @Test
     fun `does gzip when size is big and Accept header is set`() = TestUtil.test(app) { _, http ->
-        assertThat(Unirest.get(http.origin + "/huge").asString().body.length, `is`(hugeLength))
-        assertThat(getResponse(http.origin, "/huge", "gzip").headers().get(Header.CONTENT_ENCODING), `is`("gzip"))
-        assertThat(getResponse(http.origin, "/huge", "gzip").body()!!.contentLength(), `is`(7740L)) // hardcoded because lazy
+        assertThat(Unirest.get(http.origin + "/huge").asString().body.length).isEqualTo(hugeLength)
+        assertThat(getResponse(http.origin, "/huge", "gzip").headers().get(Header.CONTENT_ENCODING)).isEqualTo("gzip")
+        assertThat(getResponse(http.origin, "/huge", "gzip").body()!!.contentLength()).isEqualTo(7740L) // hardcoded because lazy
     }
 
     @Test
     fun `doesn't gzip when gzip is disabled`() = TestUtil.test(gzipDisabledApp) { _, http ->
-        assertThat(getResponse(http.origin, "/huge", "gzip").headers().get(Header.CONTENT_ENCODING), `is`(nullValue()))
+        assertThat(getResponse(http.origin, "/huge", "gzip").headers().get(Header.CONTENT_ENCODING)).isNull()
     }
 
     // we need to use okhttp, because unirest omits the content-encoding header

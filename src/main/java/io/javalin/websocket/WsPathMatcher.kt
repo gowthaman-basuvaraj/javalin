@@ -7,97 +7,42 @@
 package io.javalin.websocket
 
 import io.javalin.core.PathParser
-import org.eclipse.jetty.websocket.api.Session
-import org.eclipse.jetty.websocket.api.UpgradeRequest
-import org.eclipse.jetty.websocket.api.annotations.*
+import io.javalin.core.security.Role
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
 
-data class WsEntry(val path: String, val handler: WsHandler, val caseSensitiveUrls: Boolean) {
-    private val pathParser = PathParser(path, caseSensitiveUrls)
-    fun matches(requestUri: String) = pathParser.matches(requestUri)
-    fun extractPathParams(requestUri: String) = pathParser.extractPathParams(requestUri)
+data class WsEntry(val type: WsHandlerType, val path: String, val handler: WsHandler, val permittedRoles: Set<Role>) {
+    private val pathParser = PathParser(path)
+    fun matches(path: String) = pathParser.matches(path)
+    fun extractPathParams(path: String) = pathParser.extractPathParams(path)
 }
 
 /**
- * Every WebSocket request passes through a single instance of this class.
- * Session IDs are generated and tracked here, and path-parameters are cached for performance.
+ * Performs match operations on WebSocket paths.
  */
-@WebSocket
 class WsPathMatcher {
 
-    val wsEntries = mutableListOf<WsEntry>()
-    var wsLogger: WsHandler? = null
-    private val sessionIds = ConcurrentHashMap<Session, String>()
-    private val sessionPathParams = ConcurrentHashMap<Session, Map<String, String>>()
+    private val wsHandlerEntries = WsHandlerType.values()
+            .associateTo(EnumMap<WsHandlerType, MutableList<WsEntry>>(WsHandlerType::class.java)) {
+                it to mutableListOf()
+            }
 
-    fun add(wsEntry: WsEntry) {
-        if (!wsEntry.caseSensitiveUrls && wsEntry.path != wsEntry.path.toLowerCase()) {
-            throw IllegalArgumentException("By default URLs must be lowercase. Change casing or call `app.enableCaseSensitiveUrls()` to allow mixed casing.")
+    fun add(entry: WsEntry) {
+        if (wsHandlerEntries[entry.type]!!.find { it.type == entry.type && it.path == entry.path } != null) {
+            throw IllegalArgumentException("Handler with type='${entry.type}' and path='${entry.path}' already exists.")
         }
-        wsEntries.add(wsEntry)
+        wsHandlerEntries[entry.type]!!.add(entry)
     }
 
-    @OnWebSocketConnect
-    fun webSocketConnect(session: Session) {
-        findEntry(session)?.let {
-            val wsSession = wrap(session, it)
-            it.handler.connectHandler?.handle(wsSession)
-            wsLogger?.connectHandler?.handle(wsSession)
-        }
+    /** Returns all the before handlers that match the given [path]. */
+    fun findBeforeHandlerEntries(path: String) = findEntries(WsHandlerType.WS_BEFORE, path)
 
-    }
+    /** Returns the first endpoint handler that match the given [path], or `null`. */
+    fun findEndpointHandlerEntry(path: String) = findEntries(WsHandlerType.WEBSOCKET, path).firstOrNull()
 
-    @OnWebSocketMessage
-    fun webSocketMessage(session: Session, message: String) {
-        findEntry(session)?.let {
-            val wsSession = wrap(session, it)
-            it.handler.messageHandler?.handle(wsSession, message)
-            wsLogger?.messageHandler?.handle(wsSession, message)
-        }
-    }
+    /** Returns all the after handlers that match the given [path]. */
+    fun findAfterHandlerEntries(path: String) = findEntries(WsHandlerType.WS_AFTER, path)
 
-    @OnWebSocketMessage
-    fun webSocketBinaryMessage(session: Session, buffer: ByteArray, offset: Int, length: Int) {
-        findEntry(session)?.let {
-            val wsSession = wrap(session, it)
-            it.handler.binaryMessageHandler?.handle(wsSession, buffer.toTypedArray(), offset, length)
-            wsLogger?.binaryMessageHandler?.handle(wsSession, buffer.toTypedArray(), offset, length)
-        }
-    }
-
-    @OnWebSocketError
-    fun webSocketError(session: Session, throwable: Throwable?) {
-        findEntry(session)?.let {
-            val wsSession = wrap(session, it)
-            it.handler.errorHandler?.handle(wsSession, throwable)
-            wsLogger?.errorHandler?.handle(wsSession, throwable)
-        }
-    }
-
-    @OnWebSocketClose
-    fun webSocketClose(session: Session, statusCode: Int, reason: String?) {
-        findEntry(session)?.let {
-            val wsSession = wrap(session, it)
-            it.handler.closeHandler?.handle(wsSession, statusCode, reason)
-            wsLogger?.closeHandler?.handle(wsSession, statusCode, reason)
-        }
-        destroy(session)
-    }
-
-    private fun findEntry(session: Session) = findEntry(session.upgradeRequest)
-
-    fun findEntry(req: UpgradeRequest) = wsEntries.find { it.matches(req.requestURI.path) }
-
-    private fun wrap(session: Session, wsEntry: WsEntry): WsSession {
-        sessionIds.putIfAbsent(session, UUID.randomUUID().toString())
-        sessionPathParams.putIfAbsent(session, wsEntry.extractPathParams(session.upgradeRequest.requestURI.path))
-        return WsSession(sessionIds[session]!!, session, sessionPathParams[session]!!, wsEntry.path)
-    }
-
-    private fun destroy(session: Session) {
-        sessionIds.remove(session)
-        sessionPathParams.remove(session)
-    }
-
+    /** Returns all the handlers of type [handlerType] that match the given [path]. */
+    private fun findEntries(handlerType: WsHandlerType, path: String) =
+            wsHandlerEntries[handlerType]!!.filter { entry -> entry.path == "*" || entry.matches(path) }
 }
