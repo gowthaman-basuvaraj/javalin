@@ -23,8 +23,8 @@ object MultipartUtil {
                     content = ByteArrayInputStream(bytes),
                     contentType = filePart.contentType,
                     contentLength = bytes.size,
-                    filename = filePart.submittedFileName,
-                    extension = filePart.submittedFileName.replaceBeforeLast(".", "")
+                    filename = filePart.name,
+                    extension = filePart.name.replaceBeforeLast(".", "")
             )
         }
     }
