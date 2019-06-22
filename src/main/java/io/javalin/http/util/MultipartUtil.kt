@@ -29,19 +29,6 @@ object MultipartUtil {
         }
     }
 
-    private fun getNameFromContentDisposition(part: Part): String{
-        val cd = part.getHeader("Content-Disposition")?.toLowerCase() ?: return part.name
-        if(cd.startsWith("form-data") || cd.startsWith("attachment")){
-            val p = cd.split(";").firstOrNull { it.contains("filename") } ?: return part.name
-            val fn = p.split("=")[1]
-            val fnNoQuote = fn.substring(1, fn.length-1)
-            return fnNoQuote.replace(Regex("[^0-9A-Za-z\\s\\.\\-]"),"_")
-
-        }
-        return part.name
-
-    }
-
     fun getFieldMap(req: HttpServletRequest): Map<String, List<String>> {
         req.setAttribute("org.eclipse.jetty.multipartConfig", MultipartConfigElement(System.getProperty("java.io.tmpdir")))
         return req.parts.associate { part -> part.name to getPartValue(req, part.name) }
