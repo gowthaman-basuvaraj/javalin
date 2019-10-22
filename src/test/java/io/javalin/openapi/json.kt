@@ -109,6 +109,80 @@ val simpleExample = """
 """.formatJson()
 
 @Language("JSON")
+val simpleExampleWithMultipleGets = """
+  {
+    "openapi": "3.0.1",
+    "info": {
+      "title": "Example",
+      "version": "1.0.0"
+    },
+    "paths": {
+      "/test1": {
+        "get": {
+          "summary": "Get test1",
+          "description": "Test1",
+          "operationId": "getTest1",
+          "responses" : {
+            "200" : {
+              "description" : "OK"
+            }
+          }
+        }
+      },
+      "/test2": {
+        "get": {
+          "summary": "Get test2",
+          "description": "Test2",
+          "operationId": "getTest2",
+          "responses" : {
+            "200" : {
+              "description" : "OK"
+            }
+          }
+        }
+      }
+    },
+    "components": {}
+  }
+""".formatJson()
+
+@Language("JSON")
+val simpleExampleWithMultipleHttpMethods = """
+  {
+    "openapi": "3.0.1",
+    "info": {
+      "title": "Example",
+      "version": "1.0.0"
+    },
+    "paths": {
+      "/test": {
+        "get": {
+          "summary": "Get test",
+          "description": "Test1",
+          "operationId": "getTest",
+          "responses" : {
+            "200" : {
+              "description" : "OK"
+            }
+          }
+        },
+        "post": {
+          "summary": "Post test",
+          "description": "Test2",
+          "operationId": "postTest",
+          "responses" : {
+            "200" : {
+              "description" : "OK"
+            }
+          }
+        }
+      }
+    },
+    "components": {}
+  }
+""".formatJson()
+
+@Language("JSON")
 val provideRouteExampleJson = """
   {
     "openapi": "3.0.1",
@@ -120,7 +194,12 @@ val provideRouteExampleJson = """
       "/test": {
         "get": {
           "summary": "Get test",
-          "operationId": "getTest"
+          "operationId": "getTest",
+          "responses" : {
+            "200" : {
+              "description" : "Default response"
+            }
+          }
         }
       }
     },
@@ -146,11 +225,10 @@ val complexExampleJson = """
       "description": "My example app"
     }
   ],
-  "security": [
-    {
-      "http": []
-    }
-  ],
+  "security" : [ {
+    "http" : [ ],
+    "token" : [ ]
+  } ],
   "tags": [
     {
       "name": "user",
@@ -160,7 +238,12 @@ val complexExampleJson = """
   "paths": {
     "/unimplemented": {
       "get": {
-        "summary": "This path is not implemented in javalin"
+        "summary": "This path is not implemented in javalin",
+        "responses" : {
+          "200" : {
+            "description" : "Default response"
+          }
+        }
       }
     },
     "/user": {
@@ -225,6 +308,43 @@ val complexExampleJson = """
             }
           },
           "required": true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Default response"
+          }
+        }
+      }
+    },
+    "/user/{userid}": {
+      "get": {
+        "summary": "Get specific user",
+        "description": "Get a specific user with his/her id",
+        "operationId": "getSpecificUser",
+        "parameters": [ {
+          "name": "userid",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        } ],
+        "responses": {
+          "200": {
+            "description": "Request successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -347,6 +467,11 @@ val complexExampleJson = """
             }
           },
           "required": true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Default response"
+          }
         }
       }
     },
@@ -373,6 +498,11 @@ val complexExampleJson = """
             }
           },
           "required": true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "Default response"
+          }
         }
       }
     },
@@ -393,10 +523,15 @@ val complexExampleJson = """
       "Address": $addressOpenApiSchema,
       "User": $userOpenApiSchema
     },
-    "securitySchemes": {
-      "http": {
-        "type": "HTTP",
-        "scheme": "basic"
+    "securitySchemes" : {
+      "http" : {
+        "type" : "http",
+        "scheme" : "basic"
+      },
+      "apiKey" : {
+        "type" : "apiKey",
+        "name" : "token",
+        "in" : "cookie"
       }
     }
   }
@@ -451,7 +586,12 @@ val crudExampleJson = """
               "type": "string"
             }
           }
-        ]
+        ],
+        "responses" : {
+          "200" : {
+            "description" : "Default response"
+          }
+        }
       },
       "patch": {
         "summary": "Patch users with userId",
@@ -465,7 +605,12 @@ val crudExampleJson = """
               "type": "string"
             }
           }
-        ]
+        ],
+        "responses" : {
+          "200" : {
+            "description" : "Default response"
+          }
+        }
       }
     },
     "/users": {
@@ -490,7 +635,12 @@ val crudExampleJson = """
       },
       "post": {
         "summary": "Post users",
-        "operationId": "postUsers"
+        "operationId": "postUsers",
+        "responses" : {
+          "200" : {
+            "description" : "Default response"
+          }
+        }
       }
     }
   },
@@ -517,22 +667,22 @@ val defaultOperationExampleJson = """
         "summary": "Get route1",
         "operationId": "getRoute1",
         "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/User"
-                }
-              }
-            }
-          },
           "500": {
             "description": "Server Error",
             "content" : {
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/MyError"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
                 }
               }
             }
@@ -561,8 +711,6 @@ val defaultOperationExampleJson = """
   },
   "components": {
     "schemas": {
-      "Address": $addressOpenApiSchema,
-      "User": $userOpenApiSchema,
       "MyError" : {
         "required" : [ "message" ],
         "type" : "object",
@@ -571,8 +719,162 @@ val defaultOperationExampleJson = """
             "type" : "string"
           }
         }
+      },
+      "Address": $addressOpenApiSchema,
+      "User": $userOpenApiSchema
+    }
+  }
+}
+""".formatJson()
+
+val overrideJson = """
+{
+  "openapi" : "3.0.1",
+  "info" : {
+    "title" : "Override Example",
+    "version" : "1.0.0"
+  },
+  "paths" : {
+    "/user" : {
+      "get" : {
+        "summary" : "Get user",
+        "description" : "post description overwritten",
+        "operationId" : "getUser",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/User"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "summary" : "Post user",
+        "description" : "get description overwritten",
+        "operationId" : "postUser",
+        "responses" : {
+          "200" : {
+            "description" : "Default response"
+          }
+        }
+      }
+    },
+    "/unimplemented" : {
+      "get" : {
+        "summary" : "Get unimplemented",
+        "operationId" : "getUnimplemented",
+        "responses" : {
+          "200" : {
+            "description" : "Default response"
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "Address" : {
+        "required" : [ "number", "street" ],
+        "type" : "object",
+        "properties" : {
+          "street" : {
+            "type" : "string"
+          },
+          "number" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "User" : {
+        "required" : [ "name" ],
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "address" : {
+            "$ref" : "#/components/schemas/Address"
+          }
+        }
       }
     }
   }
 }
 """.formatJson()
+
+@Language("json")
+val userWithIdJsonExpected = """
+{
+	"get": {
+		"summary": "Get specific user",
+		"description": "Get a specific user with his/her id",
+		"operationId": "getSpecificUser",
+		"responses": {
+			"200": {
+				"description": "Request successful",
+				"content": {
+					"application/xml": {
+						"schema": {
+							"$ref": "#/components/schemas/User"
+						}
+					},
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/User"
+						}
+					}
+				}
+			}
+		},
+		"parameters": [
+			{
+				"schema": {
+					"type": "string"
+				},
+				"in": "path",
+				"name": "userid",
+				"required": true
+			}
+		]
+	}
+}
+""".trimIndent()
+
+@Language("json")
+val userJsonExpected = """
+{
+	"get": {
+		"summary": "Get current user",
+		"deprecated": true,
+		"description": "Get a specific user",
+		"operationId": "getCurrentUser",
+		"responses": {
+			"200": {
+				"description": "Request successful",
+				"content": {
+					"application/xml": {
+						"schema": {
+							"$ref": "#/components/schemas/User"
+						}
+					},
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/User"
+						}
+					}
+				}
+			}
+		},
+		"tags": [
+			"user"
+		]
+	},
+	"description": "Some additional information for the /user endpoint"
+}
+""".trimIndent()

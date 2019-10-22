@@ -2,8 +2,6 @@ package io.javalin.core.util
 
 import java.lang.reflect.Field
 import java.lang.reflect.Method
-import kotlin.reflect.KFunction
-import kotlin.reflect.jvm.javaMethod
 
 internal val Any.kotlinFieldName // this is most likely a very stupid solution
     get() = this.javaClass.toString().removePrefix(this.parentClass.toString() + "$").takeWhile { it != '$' }
@@ -54,19 +52,6 @@ internal val Any.isJavaField: Boolean get() = this.javaFieldName != null
 
 internal fun Any.runMethod(name: String): Any = this.javaClass.getMethod(name).apply { isAccessible = true }.invoke(this)
 
-internal val Any.lambdaMethod: Method?
-    get() = when {
-        isClass -> (this as Class<*>).declaredMethods[0]
-        isKotlinMethodReference -> {
-            val functionValue = this.getFieldValue("function") as KFunction<*>
-            functionValue.javaMethod
-        }
-        isKotlinAnonymousLambda -> null // Cannot be parsed
-        isJavaNonStaticMethodReference -> this.resolveMethodReference()
-        isJavaAnonymousLambda -> null // Cannot be parsed
-        else -> null
-    }
-
 internal val Any.lambdaField: Field?
     get() = when {
         isKotlinField -> parentClass.getDeclaredFieldByName(kotlinFieldName)
@@ -80,18 +65,18 @@ internal fun Any.getFieldValue(fieldName: String): Any {
     return field.get(this)
 }
 
-internal fun Class<*>.getDeclaredMethodByName(methodName: String): Method? = declaredMethods
-        .find { it.name == methodName }
+internal fun Class<*>.getMethodByName(methodName: String): Method? {
+    val isName = { method: Method -> method.name == methodName }
+    return declaredMethods.find(isName) ?: methods.find(isName)
+}
 
 internal fun Class<*>.getDeclaredFieldByName(methodName: String): Field? = declaredFields
         .find { it.name == methodName }
 
-internal fun Any.resolveMethodReference(): Method? {
-    val javaMethodReference = javaClass
-            .getDeclaredMethodByName(methodReferenceReflectionMethodName)
-            ?.parameters?.get(0)
-            ?.parameterizedType as Class<*>?
-    return javaMethodReference?.declaredMethods?.get(0)
-}
+internal val Class<*>.methodsNotDeclaredByObject
+    get(): Array<Method> = (declaredMethods + methods)
+            .toSet()
+            .filter { it.declaringClass != Object::class.java }
+            .toTypedArray()
 
-private const val methodReferenceReflectionMethodName = "get\$Lambda"
+internal const val methodReferenceReflectionMethodName = "get\$Lambda"

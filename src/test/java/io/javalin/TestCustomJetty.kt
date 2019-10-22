@@ -13,8 +13,15 @@ import org.assertj.core.api.Assertions.assertThat
 import org.eclipse.jetty.server.Handler
 import org.eclipse.jetty.server.RequestLog
 import org.eclipse.jetty.server.Server
-import org.eclipse.jetty.server.handler.*
-import org.eclipse.jetty.server.session.*
+import org.eclipse.jetty.server.handler.ContextHandlerCollection
+import org.eclipse.jetty.server.handler.HandlerCollection
+import org.eclipse.jetty.server.handler.HandlerList
+import org.eclipse.jetty.server.handler.HandlerWrapper
+import org.eclipse.jetty.server.handler.RequestLogHandler
+import org.eclipse.jetty.server.handler.StatisticsHandler
+import org.eclipse.jetty.server.session.DefaultSessionCache
+import org.eclipse.jetty.server.session.FileSessionDataStore
+import org.eclipse.jetty.server.session.SessionHandler
 import org.eclipse.jetty.servlet.ServletContextHandler
 import org.eclipse.jetty.servlet.ServletHolder
 import org.junit.Assert.assertFalse
@@ -39,18 +46,16 @@ class TestCustomJetty {
     fun `embedded server can have custom jetty Handler`() {
         val statisticsHandler = StatisticsHandler()
         val newServer = Server().apply { handler = statisticsHandler }
-        val javalin = Javalin.create { it.server { newServer } }
-        TestUtil.test(javalin) { app, http ->
-            app.get("/") { ctx -> ctx.result("Hello World") }
-            val requests = 5
-            for (i in 0 until requests) {
-                assertThat(http.getBody("/")).isEqualTo("Hello World")
-                assertThat(http.get("/not_there").status).isEqualTo(404)
-            }
-            assertThat(statisticsHandler.dispatched).isEqualTo(requests * 2)
-            assertThat(statisticsHandler.responses2xx).isEqualTo(requests)
-            assertThat(statisticsHandler.responses4xx).isEqualTo(requests)
+        val app = Javalin.create { it.server { newServer } }.get("/") { it.result("Hello World") }.start(0)
+        val requests = 5
+        for (i in 0 until requests) {
+            assertThat(Unirest.get("http://localhost:" + app.port() + "/").asString().body).isEqualTo("Hello World")
+            assertThat(Unirest.get("http://localhost:" + app.port() + "/not-there").asString().status).isEqualTo(404)
         }
+        assertThat(statisticsHandler.dispatched).isEqualTo(requests * 2)
+        assertThat(statisticsHandler.responses2xx).isEqualTo(requests)
+        assertThat(statisticsHandler.responses4xx).isEqualTo(requests)
+        app.stop()
     }
 
     @Test
@@ -59,19 +64,17 @@ class TestCustomJetty {
         val requestLogHandler = RequestLogHandler().apply { requestLog = RequestLog { _, _ -> logCount.incrementAndGet() } }
         val handlerChain = StatisticsHandler().apply { handler = requestLogHandler }
         val newServer = Server().apply { handler = handlerChain }
-        val javalin = Javalin.create { it.server { newServer } }
-        TestUtil.test(javalin) { app, http ->
-            app.get("/") { ctx -> ctx.result("Hello World") }
-            val requests = 10
-            for (i in 0 until requests) {
-                assertThat(http.getBody("/")).isEqualTo("Hello World")
-                assertThat(http.get("/not_there").status).isEqualTo(404)
-            }
-            assertThat(handlerChain.dispatched).isEqualTo(requests * 2)
-            assertThat(handlerChain.responses2xx).isEqualTo(requests)
-            assertThat(handlerChain.responses4xx).isEqualTo(requests)
-            assertThat(logCount.get()).isEqualTo((requests * 2).toLong())
+        val app = Javalin.create { it.server { newServer } }.get("/") { it.result("Hello World") }.start(0)
+        val requests = 10
+        for (i in 0 until requests) {
+            assertThat(Unirest.get("http://localhost:" + app.port() + "/").asString().body).isEqualTo("Hello World")
+            assertThat(Unirest.get("http://localhost:" + app.port() + "/not-there").asString().status).isEqualTo(404)
         }
+        assertThat(handlerChain.dispatched).`as`("dispatched").isEqualTo(requests * 2)
+        assertThat(handlerChain.responses2xx).`as`("responses 2xx").isEqualTo(requests)
+        assertThat(handlerChain.responses4xx).`as`("responses 4xx").isEqualTo(requests)
+        assertThat(logCount.get()).`as`("logCount").isEqualTo((requests * 2).toLong())
+        app.stop()
     }
 
     @Test
@@ -79,18 +82,16 @@ class TestCustomJetty {
         val handlerCollection = HandlerCollection()
         val handlerChain = StatisticsHandler().apply { handler = handlerCollection }
         val newServer = Server().apply { handler = handlerChain }
-        val javalin = Javalin.create { it.server { newServer } }
-        TestUtil.test(javalin) { app, http ->
-            app.get("/") { ctx -> ctx.result("Hello World") }
-            val requests = 10
-            for (i in 0 until requests) {
-                assertThat(http.getBody("/")).isEqualTo("Hello World")
-                assertThat(http.get("/not_there").status).isEqualTo(404)
-            }
-            assertThat(handlerChain.dispatched).isEqualTo(requests * 2)
-            assertThat(handlerChain.responses2xx).isEqualTo(requests)
-            assertThat(handlerChain.responses4xx).isEqualTo(requests)
+        val app = Javalin.create { it.server { newServer } }.get("/") { it.result("Hello World") }.start(0)
+        val requests = 10
+        for (i in 0 until requests) {
+            assertThat(Unirest.get("http://localhost:" + app.port() + "/").asString().body).isEqualTo("Hello World")
+            assertThat(Unirest.get("http://localhost:" + app.port() + "/not-there").asString().status).isEqualTo(404)
         }
+        assertThat(handlerChain.dispatched).isEqualTo(requests * 2)
+        assertThat(handlerChain.responses2xx).isEqualTo(requests)
+        assertThat(handlerChain.responses4xx).isEqualTo(requests)
+        app.stop()
     }
 
     @Test
@@ -118,27 +119,6 @@ class TestCustomJetty {
     }
 
     @Test
-    fun `default SessionHandler works`() {
-        Javalin.create { it.sessionHandler { SessionHandler() } }
-    }
-
-    @Test
-    fun `broken SessionHandler logs`() {
-        fun sqlSessionHandler(driver: String, url: String) = SessionHandler().apply {
-            sessionCache = DefaultSessionCache(this).apply {
-                sessionDataStore = JDBCSessionDataStoreFactory().apply {
-                    setDatabaseAdaptor(DatabaseAdaptor().apply {
-                        setDriverInfo(driver, url)
-                    })
-                }.getSessionDataStore(sessionHandler)
-            }
-        }
-        Javalin.create {
-            it.sessionHandler { sqlSessionHandler(driver = "null", url = "null") }
-        }
-    }
-
-    @Test
     fun `custom ContextHandlerCollection works`() {
         val newServer = Server()
         val handler = ContextHandlerCollection().apply {
@@ -159,7 +139,6 @@ class TestCustomJetty {
             assertThat(http.getBody("/foo/foo")).isEqualTo("yo dude")
             assertThat(http.get("/foo/baz").status).isEqualTo(404)
             assertThat(http.getBody("/bar")).isEqualTo("Hello")
-
         }
     }
 

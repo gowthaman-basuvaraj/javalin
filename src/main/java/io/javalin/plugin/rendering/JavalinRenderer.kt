@@ -9,7 +9,12 @@ package io.javalin.plugin.rendering
 import io.javalin.Javalin
 import io.javalin.http.Context
 import io.javalin.plugin.rendering.markdown.JavalinCommonmark
-import io.javalin.plugin.rendering.template.*
+import io.javalin.plugin.rendering.template.JavalinFreemarker
+import io.javalin.plugin.rendering.template.JavalinJtwig
+import io.javalin.plugin.rendering.template.JavalinMustache
+import io.javalin.plugin.rendering.template.JavalinPebble
+import io.javalin.plugin.rendering.template.JavalinThymeleaf
+import io.javalin.plugin.rendering.template.JavalinVelocity
 
 object JavalinRenderer {
 
@@ -36,7 +41,7 @@ object JavalinRenderer {
     @JvmStatic
     fun register(fileRenderer: FileRenderer, vararg ext: String) = ext.forEach {
         if (extensions[it] != null) {
-            Javalin.log.info("'$it' is already registered to ${extensions[it]!!.javaClass}. Overriding.")
+            Javalin.log?.info("'$it' is already registered to ${extensions[it]!!.javaClass}. Overriding.")
         }
         extensions[it] = fileRenderer
     }

@@ -43,6 +43,23 @@ fun getUserHandler(ctx: Context) {
 }
 
 @OpenApi(
+        description = "Get a specific user with his/her id",
+        summary = "Get specific user",
+        operationId = "getSpecificUser",
+        responses = [
+            OpenApiResponse(
+                    status = "200",
+                    content = [
+                        OpenApiContent(User::class),
+                        OpenApiContent(User::class, type = "application/xml")
+                    ],
+                    description = "Request successful")
+        ]
+)
+fun getSpecificUserHandler(ctx: Context) {
+}
+
+@OpenApi(
         tags = ["user"],
         cookies = [
             OpenApiParam(name = "my-cookie", type = String::class, description = "My cookie")
@@ -143,20 +160,24 @@ fun getIgnore(ctx: Context) {
 
 // endregion complexExampleWithAnnotationsHandler
 // region handler types
-class ClassHandler : Handler {
+open class ClassHandler : Handler {
     @OpenApi(responses = [OpenApiResponse(status = "200")])
     override fun handle(ctx: Context) {
     }
 }
 
+class ExtendedClassHandler : ClassHandler()
+
 @OpenApi(responses = [OpenApiResponse(status = "200")])
 fun kotlinFunctionHandler(ctx: Context) {
 }
 
-object KotlinFieldHandlers {
+open class KotlinFieldHandlers {
     @OpenApi(responses = [OpenApiResponse(status = "200")])
     var kotlinFieldHandler = Handler { ctx -> }
 }
+
+class ExtendedKotlinFieldHandlers : KotlinFieldHandlers()
 
 // endregion handler types
 
@@ -168,6 +189,7 @@ class TestOpenApiAnnotations {
         }
 
         app.get("/user", ::getUserHandler)
+        app.get("/user/:userid", ::getSpecificUserHandler)
         app.get("/users/:my-path-param", ::getUsersHandler)
         app.get("/users2", ::getUsers2Handler)
         app.put("/user", ::putUserHandler)
@@ -227,6 +249,13 @@ class TestOpenApiAnnotations {
     }
 
     @Test
+    fun `createOpenApiSchema() with extended class`() {
+        extractSchemaForTest {
+            it.get("/test", ExtendedClassHandler())
+        }.assertEqualTo(simpleExample)
+    }
+
+    @Test
     fun `createOpenApiSchema() with kotlin function`() {
         extractSchemaForTest {
             it.get("/test", ::kotlinFunctionHandler)
@@ -236,7 +265,14 @@ class TestOpenApiAnnotations {
     @Test
     fun `createOpenApiSchema() with kotlin field`() {
         extractSchemaForTest {
-            it.get("/test", KotlinFieldHandlers.kotlinFieldHandler)
+            it.get("/test", KotlinFieldHandlers().kotlinFieldHandler)
+        }.assertEqualTo(simpleExample)
+    }
+
+    @Test
+    fun `createOpenApiSchema() with kotlin field from extended class`() {
+        extractSchemaForTest {
+            it.get("/test", ExtendedKotlinFieldHandlers().kotlinFieldHandler)
         }.assertEqualTo(simpleExample)
     }
 }

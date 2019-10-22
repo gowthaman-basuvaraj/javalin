@@ -1,5 +1,6 @@
 package io.javalin.plugin.openapi.annotations
 
+import io.javalin.Javalin
 import kotlin.reflect.KClass
 
 /**
@@ -21,15 +22,9 @@ annotation class OpenApi(
         val requestBody: OpenApiRequestBody = OpenApiRequestBody([]),
         val fileUploads: Array<OpenApiFileUpload> = [],
         val responses: Array<OpenApiResponse> = [],
-        /**
-         * The path of the endpoint. This will only be used if class scanning is activated and the annotation
-         * couldn't be found via reflection.
-         */
+        /** The path of the endpoint. This will if the annotation * couldn't be found via reflection. */
         val path: String = NULL_STRING,
-        /**
-         * The method of the endpoint. This will only be used if class scanning is activated and the annotation
-         * couldn't be found via annotation.
-         */
+        /** The method of the endpoint. This will if the annotation * couldn't be found via reflection. */
         val method: HttpMethod = HttpMethod.GET
 )
 
@@ -100,3 +95,50 @@ data class PathInfo(val path: String, val method: HttpMethod)
 
 val OpenApi.pathInfo get() = PathInfo(path, method)
 
+
+/** Checks if there are any potential bugs in the configuration */
+fun OpenApi.warnUserAboutPotentialBugs(parentClass: Class<*>) {
+    warnUserIfPathParameterIsMissingInPath(parentClass)
+}
+
+fun OpenApi.warnUserIfPathParameterIsMissingInPath(parentClass: Class<*>) {
+    if (pathParams.isEmpty() || path == NULL_STRING) {
+        // Nothing to check
+        return
+    }
+
+    val pathParamsPlaceholders = pathParams.map { ":${it.name}" };
+    val pathParamsPlaceholderNotInPath = pathParamsPlaceholders.filter { !path.contains(it) }
+
+    Javalin.log.warn(
+            formatMissingPathParamsPlaceholderWarningMessage(parentClass, pathParamsPlaceholderNotInPath)
+    )
+}
+
+fun OpenApi.formatMissingPathParamsPlaceholderWarningMessage(parentClass: Class<*>, pathParamsPlaceholders: List<String>): String {
+    val methodAsString = method.name
+    val multipleParams = pathParamsPlaceholders.size > 1
+    val secondSentence = if (multipleParams) {
+        "The path params ${pathParamsPlaceholders.toFormattedString()} are documented, but couldn't be found in $methodAsString \"$path\"."
+    } else {
+        "The path param ${pathParamsPlaceholders.toFormattedString()} is documented, but couldn't be found in $methodAsString \"$path\"."
+    }
+    return "The `path` of one of the @OpenApi annotations on ${parentClass.canonicalName} is incorrect. " +
+            secondSentence + " " +
+            "Do you mean $methodAsString \"$path/${pathParamsPlaceholders.joinToString("/")}\"?"
+}
+
+fun List<String>.toFormattedString(): String {
+    if (size == 1) {
+        return "\"${this[0]}\""
+    }
+    var result = ""
+    this.forEachIndexed { index, s ->
+        when {
+            index == lastIndex -> result += " and "
+            index > 0 -> result += ", "
+        }
+        result += "\"$s\""
+    }
+    return result
+}

@@ -5,19 +5,20 @@ import io.javalin.apibuilder.ApiBuilder;
 import io.javalin.apibuilder.CrudHandler;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
+import io.javalin.misc.TestLoggingUtilKt;
 import io.javalin.plugin.openapi.JavalinOpenApi;
 import io.javalin.plugin.openapi.OpenApiOptions;
 import io.javalin.plugin.openapi.OpenApiPlugin;
 import io.javalin.plugin.openapi.annotations.HttpMethod;
 import io.javalin.plugin.openapi.annotations.OpenApi;
 import io.javalin.plugin.openapi.annotations.OpenApiContent;
+import io.javalin.plugin.openapi.annotations.OpenApiParam;
 import io.javalin.plugin.openapi.annotations.OpenApiResponse;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import kotlin.Unit;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 class JavaCrudHandler implements CrudHandler {
@@ -104,6 +105,47 @@ class JavaMethodReference {
     }
 }
 
+class ExtendedJavaMethodReference extends JavaMethodReference {
+}
+
+class JavaMethodReference2 {
+    @OpenApi(
+        path = "/test1",
+        description = "Test1",
+        responses = {@OpenApiResponse(status = "200")}
+    )
+    public void createHandler1(Context ctx) {
+    }
+
+    @OpenApi(
+        path = "/test2",
+        description = "Test2",
+        responses = {@OpenApiResponse(status = "200")}
+    )
+    public void createHandler2(Context ctx) {
+    }
+}
+
+class JavaMethodReference3 {
+    @OpenApi(
+        path = "/test",
+        method = HttpMethod.GET,
+        description = "Test1",
+        responses = {@OpenApiResponse(status = "200")}
+    )
+    public void createHandler1(Context ctx) {
+    }
+
+    @OpenApi(
+        path = "/test",
+        method = HttpMethod.POST,
+        description = "Test2",
+        responses = {@OpenApiResponse(status = "200")}
+    )
+    public void createHandler2(Context ctx) {
+    }
+}
+
 class JavaStaticMethodReference {
     @OpenApi(
         path = "/test",
@@ -117,9 +159,27 @@ class JavaStaticMethodReference {
 class JavaFieldReference {
     @OpenApi(responses = {@OpenApiResponse(status = "200")})
     public static Handler handler = new Handler() {
-        @Override public void handle(@NotNull Context ctx) throws Exception { }
+        @Override
+        public void handle(@NotNull Context ctx) throws Exception {
+        }
     };
+}
 
+class ClassHandlerWithInvalidPath {
+    @OpenApi(
+        method = HttpMethod.GET,
+        path = "/account", // /account/:id would be correct
+        pathParams = @OpenApiParam(name = "id", type = Integer.class)
+    )
+    void getOne(Context ctx) {
+    }
+
+    @OpenApi(
+        method = HttpMethod.GET,
+        path = "/account"
+    )
+    void getAll(Context ctx) {
+    }
 }
 
 public class TestOpenApiAnnotations_Java {
@@ -167,6 +227,46 @@ public class TestOpenApiAnnotations_Java {
     }
 
     @Test
+    public void testWithExtendedJavaMethodReference() {
+        Info info = new Info().title("Example").version("1.0.0");
+        OpenApiOptions options = new OpenApiOptions(info);
+
+        OpenAPI schema = OpenApiTestUtils.extractSchemaForTest(options, app -> {
+            app.get("/test", new ExtendedJavaMethodReference()::createHandler);
+            return Unit.INSTANCE;
+        });
+        OpenApiTestUtils.assertEqualTo(schema, JsonKt.getSimpleExample());
+    }
+
+    @Test
+    public void testWithJavaMethodReferenceAndMultipleMethods() {
+        Info info = new Info().title("Example").version("1.0.0");
+        OpenApiOptions options = new OpenApiOptions(info);
+
+        OpenAPI schema = OpenApiTestUtils.extractSchemaForTest(options, app -> {
+            JavaMethodReference2 ref = new JavaMethodReference2();
+            app.get("/test1", ref::createHandler1);
+            app.get("/test2", ref::createHandler2);
+            return Unit.INSTANCE;
+        });
+        OpenApiTestUtils.assertEqualTo(schema, JsonKt.getSimpleExampleWithMultipleGets());
+    }
+
+    @Test
+    public void testWithJavaMethodReferenceAndMultipleMethodsAndSamePath() {
+        Info info = new Info().title("Example").version("1.0.0");
+        OpenApiOptions options = new OpenApiOptions(info);
+
+        OpenAPI schema = OpenApiTestUtils.extractSchemaForTest(options, app -> {
+            JavaMethodReference3 ref = new JavaMethodReference3();
+            app.get("/test", ref::createHandler1);
+            app.post("/test", ref::createHandler2);
+            return Unit.INSTANCE;
+        });
+        OpenApiTestUtils.assertEqualTo(schema, JsonKt.getSimpleExampleWithMultipleHttpMethods());
+    }
+
+    @Test
     public void testWithJavaStaticMethodReference() {
         Info info = new Info().title("Example").version("1.0.0");
         OpenApiOptions options = new OpenApiOptions(info)
@@ -186,5 +286,23 @@ public class TestOpenApiAnnotations_Java {
             return Unit.INSTANCE;
         });
         OpenApiTestUtils.assertEqualTo(schema, JsonKt.getSimpleExample());
+    }
+
+    @Test
+    public void testIfUserIsWarnedOnInvalidPath() {
+        String log = TestLoggingUtilKt.captureStdOut(() -> {
+            OpenApiTestUtils.extractSchemaForTest(app -> {
+                ClassHandlerWithInvalidPath handler = new ClassHandlerWithInvalidPath();
+                app.get("/account", handler::getAll);
+                app.get("/account/:id", handler::getOne);
+                return Unit.INSTANCE;
+            });
+            return Unit.INSTANCE;
+        });
+        assertThat(log).contains(
+            "The `path` of one of the @OpenApi annotations on io.javalin.openapi.ClassHandlerWithInvalidPath is incorrect. " +
+                "The path param \":id\" is documented, but couldn't be found in GET \"/account\". " +
+                "Do you mean GET \"/account/:id\"?"
+        );
     }
 }
