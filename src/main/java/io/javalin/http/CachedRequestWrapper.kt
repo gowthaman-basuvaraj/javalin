@@ -8,7 +8,6 @@ package io.javalin.http
 
 import io.javalin.Javalin
 import java.io.ByteArrayInputStream
-import javax.servlet.ReadListener
 import javax.servlet.ServletInputStream
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletRequestWrapper
@@ -37,8 +36,5 @@ class CachedRequestWrapper(request: HttpServletRequest, private val bodyCacheSiz
         private val byteArrayInputStream: ByteArrayInputStream = ByteArrayInputStream(cachedBytes)
         override fun read(): Int = byteArrayInputStream.read()
         override fun available(): Int = byteArrayInputStream.available()
-        override fun isFinished(): Boolean = available() <= 0
-        override fun isReady(): Boolean = available() >= 0
-        override fun setReadListener(readListener: ReadListener) {}
     }
 }

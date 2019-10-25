@@ -12,7 +12,6 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.util.zip.GZIPOutputStream
 import javax.servlet.ServletOutputStream
-import javax.servlet.WriteListener
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 import javax.servlet.http.HttpServletResponseWrapper
@@ -104,8 +103,6 @@ class OutputStreamWrapper(val res: HttpServletResponse, private val rwc: Respons
     private fun excludedMimeType(mimeType: String) =
             if (mimeType == "") false else excludedMimeTypes.any { excluded -> mimeType.contains(excluded, ignoreCase = true) }
 
-    override fun isReady(): Boolean = res.outputStream.isReady
-    override fun setWriteListener(writeListener: WriteListener?) = res.outputStream.setWriteListener(writeListener)
     override fun write(b: Int) {
         res.outputStream.write(b)
     }
