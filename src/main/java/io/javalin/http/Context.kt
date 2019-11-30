@@ -131,6 +131,7 @@ open class Context(@JvmField val req: HttpServletRequest, @JvmField val res: Htt
     fun <T> bodyValidator(clazz: Class<T>) = try {
         Validator(JavalinJson.fromJson(body(), clazz), "Request body as ${clazz.simpleName}")
     } catch (e: Exception) {
+        e.printStackTrace()
         throw BadRequestResponse("Couldn't deserialize body to ${clazz.simpleName}")
     }
 
